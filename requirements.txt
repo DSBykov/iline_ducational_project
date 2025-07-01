@@ -1,0 +1,4 @@
+mimesis
+psycopg2
+anytree
+tabulate
