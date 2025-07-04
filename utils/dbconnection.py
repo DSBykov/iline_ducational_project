@@ -12,7 +12,7 @@ class DBConnection():
             conn = psycopg2.connect(
                 dbname="iline_db",
                 user="postgres",
-                password="TheItCrowd_86",
+                password="db_password",
                 host="localhost",
                 port="5432",
                 client_encoding="UTF8"
