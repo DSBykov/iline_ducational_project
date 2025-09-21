@@ -29,5 +29,3 @@ def generate_employee_data():
         'hire_date': str(dt.date(start=2010, end=2024)),
         'salary': finance.price(minimum=100000 * __ks, maximum= 200000 * __ks)
     }
-
-# def set_relations():

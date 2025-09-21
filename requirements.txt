@@ -2,3 +2,5 @@ mimesis
 psycopg2
 anytree
 tabulate
+Flask
+Flask-SQLAlchemy

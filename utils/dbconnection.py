@@ -1,10 +1,88 @@
 import psycopg2
-from psycopg2 import sql
-from datetime import datetime
+
 
 class DBConnection():
     def __init__(self):
-        self.db = self.create_connection()    
+        self.db = self.create_connection()
+
+    def __create_table_employees(self):
+        try:
+            with self.db.cursor() as cursor:
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS employees
+                    (
+                        id SERIAL PRIMARY KEY,
+                        full_name character varying(100) COLLATE pg_catalog."default" NOT NULL,
+                        position integer NOT NULL,
+                        hire_date date NOT NULL,
+                        salary numeric(10,2) NOT NULL
+                    )
+                """)
+                self.db.commit()
+                print(f"Создана таблица 'employees'")
+        except Exception as e:
+            print(f"Ошибка при создании таблицы 'employees': {e}")
+
+    def __create_table_employee_hierarchy(self):
+        try:
+            with self.db.cursor() as cursor:
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS employee_hierarchy
+                    (
+                        boss_id integer NOT NULL,
+                        subordinate_id integer NOT NULL,
+                        CONSTRAINT employee_hierarchy_pkey PRIMARY KEY (boss_id, subordinate_id),
+                        CONSTRAINT employee_hierarchy_boss_id_fkey FOREIGN KEY (boss_id)
+                            REFERENCES public.employees (id) MATCH SIMPLE
+                            ON UPDATE NO ACTION
+                            ON DELETE CASCADE,
+                        CONSTRAINT employee_hierarchy_subordinate_id_fkey FOREIGN KEY (subordinate_id)
+                            REFERENCES public.employees (id) MATCH SIMPLE
+                            ON UPDATE NO ACTION
+                            ON DELETE CASCADE
+                    )
+                """)
+                self.db.commit()
+                print(f"Создана таблица 'employee_hierarchy'")
+        except Exception as e:
+            print(f"Ошибка при создании таблицы 'employee_hierarchy': {e}")
+
+    def __create_table_positions(self):
+        try:
+            with self.db.cursor() as cursor:
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS positions
+                    (
+                        position_id integer NOT NULL,
+                        position_name character varying(100) COLLATE pg_catalog."default" NOT NULL
+                    )
+                """)
+                self.db.commit()
+                print(f"Создана таблица 'positions'")
+        except Exception as e:
+            print(f"Ошибка при создании таблицы 'positions': {e}")
+
+    def __filling_table_positions(self):
+        try:
+            with self.db.cursor() as cursor:
+                cursor.execute("""
+                    INSERT INTO positions (position_name, position_id) VALUES
+                    ('Developer', 1),
+                    ('Senior Developer', 2),
+                    ('Team Lead', 3),
+                    ('Manager', 4),
+                    ('CEO', 5);
+                """)
+                self.db.commit()
+                print(f"Справочник 'positions' заполнен")
+        except Exception as e:
+            print(f"Ошибка заполнения справочника 'positions': {e}")
+
+    def create_tables(self):
+        self.__create_table_employees()
+        self.__create_table_employee_hierarchy()
+        self.__create_table_positions()
+        self.__filling_table_positions()
 
     # Подключение к базе данных
     def create_connection(self):

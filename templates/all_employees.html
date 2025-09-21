@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+          min-width: 850px;
+        }
+
+        /* Стили для красоты и функциональности */
+        nav {
+            background-color: #333; /* Тёмный фон */
+            padding: 15px 0;
+        }
+
+        nav ul {
+            list-style-type: none; /* Убираем маркеры у списка */
+            margin: 0;
+            padding: 0;
+            text-align: center; /* Выравниваем пункты по центру */
+        }
+
+        nav ul li {
+            display: inline; /* Делаем пункты списка горизонтальными */
+            margin: 0 20px; /* Расстояние между пунктами */
+        }
+
+        nav ul li a {
+            color: white; /* Цвет текста */
+            text-decoration: none; /* Убираем подчёркивание у ссылок */
+            font-family: Arial, sans-serif;
+            font-size: 18px;
+            padding: 10px 15px;
+        }
+
+        nav ul li nav_panel_name {
+            color: yellow;
+            font-size: 18px;
+            padding: 10px 15px;
+        }
+
+        nav ul li a:hover {
+            background-color: #555; /* Цвет фона при наведении */
+            border-radius: 5px; /* Скругляем углы */
+        }
+
+        /* Класс для активной страницы */
+        .active {
+            background-color: #4CAF50; /* Зелёный фон для активной ссылки */
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <!-- Меню сортировки данных -->
+        <nav>
+            <ul>
+                <li><nav_panel_name>Сортировка:</nav_panel_name></li>
+                <li><a href="{{ url_for('employees', page=page, sort_by='full_name', sort_order='asc' if sort_by != 'full_name' or sort_order == 'desc' else 'desc') }}">
+                            По имени {% if sort_by == 'full_name' %}{{ '▼' if sort_order == 'desc' else '▲' }}{% endif %}</a></li> <!-- class="active" показывает, где мы сейчас -->
+                <li><a href="{{ url_for('employees', page=page, sort_by='position', sort_order='asc' if sort_by != 'position' or sort_order == 'desc' else 'desc') }}">
+                            По должности {% if sort_by == 'position' %}{{ '▼' if sort_order == 'desc' else '▲' }}{% endif %}</a></li>
+                <li><a href="{{ url_for('employees', page=page, sort_by='hire_date', sort_order='asc' if sort_by != 'hire_date' or sort_order == 'desc' else 'desc') }}">
+                            По дате найма {% if sort_by == 'hire_date' %}{{ '▼' if sort_order == 'desc' else '▲' }}{% endif %}</a></li>
+                <li><a href="{{ url_for('employees', page=page, sort_by='salary', sort_order='asc' if sort_by != 'salary' or sort_order == 'desc' else 'desc') }}">
+                            По окладу {% if sort_by == 'salary' %}{{ '▼' if sort_order == 'desc' else '▲' }}{% endif %}</a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        {% extends "layout.html" %}
+        {% block body %}
+            <h2>Все сотрудники</h2>
+            {% for employee in employees %}
+                <ul>
+                    <li> 👤 Имя: {{ employee.full_name }}</li>
+                    <li> 💼 Должность: {{employee.position_name.position_name}} (Грейд: {{employee.position}})</li>
+                    <li> 📅 Принят на работу: {{employee.hire_date}}</li>
+                    <li> 💰 Оклад: {{employee.salary}}</li>
+                    <li> 👑 Непосредственный руководитель: {{employee.boss.full_name or 'Нет'}} </li>
+                </ul>
+                <hr>
+        {% endfor %}
+
+            <!-- Пагинация -->
+            <nav aria-label="Page navigation">
+                <ul class="pagination justify-content-center">
+                    <!-- Кнопка "Назад" -->
+                    <li class="page-item {% if not employees.has_prev %}disabled{% endif %}">
+                        <a class="page-link" href="{{ url_for('employees', page=employees.prev_num, sort_by=sort_by, sort_order=sort_order) }}">
+                            &laquo;
+                        </a>
+                    </li>
+
+                    <!-- Номера страниц -->
+                    {% for page_num in employees.iter_pages(left_edge=2, left_current=2, right_current=3, right_edge=2) %}
+                        {% if page_num %}
+                            <li class="page-item {% if page_num == employees.page %}active{% endif %}">
+                                <a class="page-link" href="{{ url_for('employees', page=page_num, sort_by=sort_by, sort_order=sort_order) }}">
+                                    {{ page_num }}
+                                </a>
+                            </li>
+                        {% else %}
+                            <li class="page-item disabled">
+                                <span class="page-link">...</span>
+                            </li>
+                        {% endif %}
+                    {% endfor %}
+
+                    <!-- Кнопка "Вперед" -->
+                    <li class="page-item {% if not employees.has_next %}disabled{% endif %}">
+                        <a class="page-link" href="{{ url_for('employees', page=employees.next_num, sort_by=sort_by, sort_order=sort_order) }}">
+                            &raquo;
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+        {% endblock %}
+    </main>
+</body>
+
