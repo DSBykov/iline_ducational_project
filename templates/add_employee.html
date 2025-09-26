@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Добавить сотрудника</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <!-- Flash сообщения -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="flash-messages">
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+                            <div class="d-flex align-items-center">
+                                <i class="bi
+                                    {% if category == 'success' %}bi-check-circle-fill
+                                    {% elif category == 'error' %}bi-exclamation-circle-fill
+                                    {% elif category == 'warning' %}bi-exclamation-triangle-fill
+                                    {% else %}bi-info-circle-fill
+                                    {% endif %} me-2 fs-5"></i>
+                                <div>
+                                    <strong class="me-2">
+                                        {% if category == 'success' %}Успех!
+                                        {% elif category == 'error' %}Ошибка!
+                                        {% elif category == 'warning' %}Внимание!
+                                        {% else %}Информация
+                                        {% endif %}
+                                    </strong>
+                                    {{ message }}
+                                </div>
+                            </div>
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <div class="container mt-4">
+        <h1>Добавить нового сотрудника</h1>
+        
+        <form method="POST" action="{{ url_for('add_employee') }}">
+            <div class="mb-3">
+                <label for="full_name" class="form-label">Имя сотрудника *</label>
+                <input type="text" class="form-control" id="full_name" name="full_name" autocomplete="off" required>
+            </div>
+            
+            <div class="mb-3">
+                <label for="position_id" class="form-label">Должность *</label>
+                <select class="form-select" id="position_id" name="position_id" required>
+                    <option value="">Выберите должность</option>
+                    {% for position in positions %}
+                    <option value="{{ position.position_id }}">{{ position.position_name }} ({{ position.position_id }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="mb-3">
+                <label for="boss_id" class="form-label">Руководитель</label>
+                <div class="input-group">
+                    <input type="text" class="form-control" id="bossSearch" autocomplete="off"
+                           placeholder="Поиск руководителя..." oninput="filterBosses()">
+                    <select class="form-select" id="boss_id" name="boss_id" size="5" style="display:none;">
+                        <option value="">Нет руководителя</option>
+                        {% for employee in employees %}
+                        <option value="{{ employee.id }}"
+                                data-position-id="{{ employee.position }}"
+                                data-full-name="{{ employee.full_name }} ({{ employee.position }})">
+                            {{ employee.full_name }} ({{ employee.position }})
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div id="bossDropdown" class="dropdown-menu" style="width:100%; max-height:200px; overflow-y:auto;"></div>
+            </div>
+
+            <div class="mb-3">
+                <label for="salary" class="form-label">Оклад *</label>
+                <input type="number" step="0.01" min="0" placeholder="0.00"
+                       class="form-control" id="salary" name="salary" required>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="hire_date" class="form-label">Дата принятия на работу *</label>
+                        <input type="date" class="form-control" id="hire_date" name="hire_date"
+                               max="{{ today }}" required>
+                        <div class="form-text">Выберите дату приема на работу</div>
+                    </div>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary">Добавить сотрудника</button>
+            <a href="{{ url_for('employees') }}" class="btn btn-secondary">Отмена</a>
+        </form>
+    </div>
+
+    <script>
+        let allBosses = [];
+        let filteredBosses = [];
+
+        // Инициализация данных
+        document.addEventListener('DOMContentLoaded', function() {
+            const bossOptions = document.querySelectorAll('#boss_id option');
+            allBosses = Array.from(bossOptions).map(option => ({
+                id: option.value,
+                text: option.textContent,
+                positionId: option.getAttribute('data-position-id'),
+                fullName: option.getAttribute('data-full-name'),
+                element: option
+            })).filter(boss => boss.id !== '');
+
+            updateBossesList();
+        });
+
+        function updateBossesList() {
+            const positionSelect = document.getElementById('position_id');
+            const selectedPositionId = positionSelect.value;
+            const bossSearch = document.getElementById('bossSearch');
+
+            if (!selectedPositionId) {
+                // Показываем всех руководителей если должность не выбрана
+                filteredBosses = allBosses;
+            } else {
+                const selectedOption = positionSelect.options[positionSelect.selectedIndex];
+                const currentLevel = parseInt(selectedGrade.replace('L', '')) || 0;
+                const targetLevel = currentLevel + 1;
+
+                // Фильтруем по уровню грейда
+                filteredBosses = allBosses.filter(boss => {
+                    if (!boss.grade) return false;
+                    const bossLevel = parseInt(boss.grade.replace('L', '')) || 0;
+                    return bossLevel === targetLevel;
+                });
+            }
+
+            // Применяем текстовый фильтр
+            filterBosses();
+        }
+
+        function filterBosses() {
+            const searchText = document.getElementById('bossSearch').value.toLowerCase();
+            const dropdown = document.getElementById('bossDropdown');
+            dropdown.innerHTML = '';
+
+            // Фильтруем по тексту поиска
+            const filtered = filteredBosses.filter(boss =>
+                boss.fullName.toLowerCase().includes(searchText)
+            );
+
+            // Добавляем варианты в dropdown
+            filtered.forEach(boss => {
+                const item = document.createElement('button');
+                item.type = 'button';
+                item.className = 'dropdown-item';
+                item.textContent = boss.fullName;
+                item.onclick = () => selectBoss(boss);
+                dropdown.appendChild(item);
+            });
+
+            // Показываем/скрываем dropdown
+            if (searchText && filtered.length > 0) {
+                dropdown.style.display = 'block';
+            } else {
+                dropdown.style.display = 'none';
+            }
+        }
+
+        function selectBoss(boss) {
+            document.getElementById('bossSearch').value = boss.fullName;
+            document.getElementById('boss_id').value = boss.id;
+            document.getElementById('bossDropdown').style.display = 'none';
+        }
+
+        // Закрытие dropdown при клике вне его
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.input-group')) {
+                document.getElementById('bossDropdown').style.display = 'none';
+            }
+        });
+        // Устанавливаем максимальную дату как сегодня
+        document.getElementById('hire_date').max = new Date().toISOString().split('T')[0];
+
+        // Опционально: устанавливаем значение по умолчанию - сегодня
+        // document.getElementById('hire_date').value = new Date().toISOString().split('T')[0];
+    </script>
+</body>
+</html>

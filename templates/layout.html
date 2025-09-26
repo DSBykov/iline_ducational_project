@@ -1,7 +1,74 @@
 <!DOCTYPE html>
 <html lang="ru">
-    <title>Сотрудники моей компании</title>
+    <title>{% block title %}Сотрудники моей компании{% endblock %}</title>
     <h1>Сотрудники моей компании</h1>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+        <style>
+            body {
+              min-width: 850px;
+            }
+
+            /* Стили для красоты и функциональности */
+            nav {
+                background-color: #333; /* Тёмный фон */
+                padding: 15px 0;
+            }
+
+            nav ul {
+                list-style-type: none; /* Убираем маркеры у списка */
+                margin: 0;
+                padding: 0;
+                text-align: center; /* Выравниваем пункты по центру */
+            }
+
+            nav ul li {
+                display: inline; /* Делаем пункты списка горизонтальными */
+                margin: 0 20px; /* Расстояние между пунктами */
+            }
+
+            nav ul li a {
+                color: white; /* Цвет текста */
+                text-decoration: none; /* Убираем подчёркивание у ссылок */
+                font-family: Arial, sans-serif;
+                font-size: 18px;
+                padding: 10px 15px;
+            }
+
+            nav ul li nav_panel_name {
+                color: yellow;
+                font-size: 18px;
+                padding: 10px 15px;
+            }
+
+            nav ul li a:hover {
+                background-color: #555; /* Цвет фона при наведении */
+                border-radius: 5px; /* Скругляем углы */
+            }
+
+            /* Класс для активной страницы */
+            .active {
+                background-color: #4CAF50; /* Зелёный фон для активной ссылки */
+                border-radius: 5px;
+            }
+
+            input {
+                width: 300px
+                border-radius: 5px; /* Скругляем углы */
+
+            }
+            .shadow-hover {
+                transition: all 0.3s ease;
+                box-shadow: 0 2px 10px rgba(40, 167, 69, 0.2);
+            }
+            .shadow-hover:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 4px 20px rgba(40, 167, 69, 0.3);
+            }
+        </style>
+    </head>
     {% block body %}{% endblock %}
 </html>
 

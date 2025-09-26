@@ -1,56 +1,4 @@
 <!DOCTYPE html>
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <style>
-        body {
-          min-width: 850px;
-        }
-
-        /* Стили для красоты и функциональности */
-        nav {
-            background-color: #333; /* Тёмный фон */
-            padding: 15px 0;
-        }
-
-        nav ul {
-            list-style-type: none; /* Убираем маркеры у списка */
-            margin: 0;
-            padding: 0;
-            text-align: center; /* Выравниваем пункты по центру */
-        }
-
-        nav ul li {
-            display: inline; /* Делаем пункты списка горизонтальными */
-            margin: 0 20px; /* Расстояние между пунктами */
-        }
-
-        nav ul li a {
-            color: white; /* Цвет текста */
-            text-decoration: none; /* Убираем подчёркивание у ссылок */
-            font-family: Arial, sans-serif;
-            font-size: 18px;
-            padding: 10px 15px;
-        }
-
-        nav ul li nav_panel_name {
-            color: yellow;
-            font-size: 18px;
-            padding: 10px 15px;
-        }
-
-        nav ul li a:hover {
-            background-color: #555; /* Цвет фона при наведении */
-            border-radius: 5px; /* Скругляем углы */
-        }
-
-        /* Класс для активной страницы */
-        .active {
-            background-color: #4CAF50; /* Зелёный фон для активной ссылки */
-            border-radius: 5px;
-        }
-    </style>
-</head>
 <body>
     <header>
         <!-- Меню сортировки данных -->
@@ -69,9 +17,50 @@
         </nav>
     </header>
     <main>
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div class="d-flex align-items-center">
+                <div>
+                    <h1 class="h3 fw-bold text-dark mb-0">Всего сотрудников: {{ employees.total }}</h1>
+<!--                    <span class="text-muted small">Всего записей: {{ employees.total }}</span>-->
+                </div>
+            </div>
+            <a href="{{ url_for('add_employee') }}"
+               class="btn btn-success fw-bold px-4 py-2 btn-hover">
+                <i class="bi bi-person-plus-fill me-2"></i>Добавить сотрудника
+            </a>
+        </div>
+<!--        <button type="submit" class="btn btn-primary">Добавить сотрудника</button>-->
+<!--            <a href="{{ url_for('employees') }}" class="btn btn-secondary">Отмена</a>-->
+<!--        <div class="d-flex justify-content-between align-items-center mb-4">-->
+<!--            <h1>👥 Поиск сотрудников</h1>-->
+<!--            <a href="{{ url_for('add_employee') }}" class="btn secondary">-->
+<!--                ➕ Добавить сотрудника-->
+<!--            </a>-->
+<!--        </div>-->
+
+<!--        <form method="GET" class="mb-3">-->
+<!--            <div class="input-group">-->
+<!--                <input type="text" name="search" class="form-control"-->
+<!--                       placeholder="Поиск по имени..." value="{{ search }}">-->
+<!--                <button class="btn btn-primary" type="submit">Поиск</button>-->
+<!--            </div>-->
+<!--        </form>-->
+
+        <!-- Форма поиска и фильтрации -->
+        <form method="GET" action="{{ url_for('employees') }}" class="mb-4">
+            <div class="row">
+                <div class="col-md-8">
+                    <div class="input-group">
+                        <input type="text" name="search" class="form-control"
+                               placeholder="🔍 Поиск по имени или должности..."
+                               value="{{ request.args.get('q', '') }}">
+                        <button class="btn btn-outline-primary" type="submit">Поиск</button>
+                    </div>
+                </div>
+            </div>
+        </form>
         {% extends "layout.html" %}
         {% block body %}
-            <h2>Все сотрудники</h2>
             {% for employee in employees %}
                 <ul>
                     <li> 👤 Имя: {{ employee.full_name }}</li>
@@ -81,14 +70,19 @@
                     <li> 👑 Непосредственный руководитель: {{employee.boss.full_name or 'Нет'}} </li>
                 </ul>
                 <hr>
-        {% endfor %}
+            {% else %}
+                <tr>
+                    <td colspan="5" class="text-center">Сотрудники не найдены</td>
+                </tr>
+            {% endfor %}
 
             <!-- Пагинация -->
             <nav aria-label="Page navigation">
                 <ul class="pagination justify-content-center">
                     <!-- Кнопка "Назад" -->
                     <li class="page-item {% if not employees.has_prev %}disabled{% endif %}">
-                        <a class="page-link" href="{{ url_for('employees', page=employees.prev_num, sort_by=sort_by, sort_order=sort_order) }}">
+                        <a class="page-link" href="{{ url_for('employees', page=employees.prev_num, sort_by=sort_by,
+                        sort_order=sort_order, search=search, hire_date_from=hire_date_from, hire_date_to=hire_date_to) }}">
                             &laquo;
                         </a>
                     </li>
@@ -97,7 +91,8 @@
                     {% for page_num in employees.iter_pages(left_edge=2, left_current=2, right_current=3, right_edge=2) %}
                         {% if page_num %}
                             <li class="page-item {% if page_num == employees.page %}active{% endif %}">
-                                <a class="page-link" href="{{ url_for('employees', page=page_num, sort_by=sort_by, sort_order=sort_order) }}">
+                                <a class="page-link" href="{{ url_for('employees', page=page_num, sort_by=sort_by,
+                                sort_order=sort_order, search=search, hire_date_from=hire_date_from, hire_date_to=hire_date_to) }}">
                                     {{ page_num }}
                                 </a>
                             </li>
@@ -110,7 +105,8 @@
 
                     <!-- Кнопка "Вперед" -->
                     <li class="page-item {% if not employees.has_next %}disabled{% endif %}">
-                        <a class="page-link" href="{{ url_for('employees', page=employees.next_num, sort_by=sort_by, sort_order=sort_order) }}">
+                        <a class="page-link" href="{{ url_for('employees', page=employees.next_num, sort_by=sort_by,
+                        sort_order=sort_order, search=search, hire_date_from=hire_date_from, hire_date_to=hire_date_to) }}">
                             &raquo;
                         </a>
                     </li>
