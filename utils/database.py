@@ -36,7 +36,7 @@ class Employee(db.Model):
   )
 
   def __repr__(self):
-    return f'<Employee {self.id}, full name: {self.full_name}, >'
+    return f'<Employee {self.id}, full name: {self.full_name} >'
 
 
 # Альтернативный вариант: через класс-модель
@@ -78,3 +78,90 @@ class Positions(db.Model):
 
   employees = relationship("Employee", back_populates="position_name")
 
+def has_subordinates(employee_id):
+  """Проверяет, есть ли у сотрудника подчиненные"""
+  employee = Employee.query.get(employee_id)
+  if not employee:
+    return False
+
+  # Проверяем через relationship (если backref настроен правильно)
+  return employee.subordinate_relations
+
+
+def delete_subordinate(employee_id):
+  """Удаляет сотрудника (без подчиненных)"""
+  try:
+    employee = Employee.query.get(employee_id)
+    if not employee:
+      return False, "Сотрудник не найден"
+
+    # Проверяем, что нет подчиненных
+    if employee.subordinate_relations:
+      return False, "Нельзя удалить сотрудника с подчиненными"
+
+    employee_name = employee.full_name
+
+    # Удаляем связи где сотрудник является подчиненным
+    EmployeeHierarchy.query.filter_by(subordinate_id=employee_id).delete()
+
+    # Удаляем самого сотрудника
+    db.session.delete(employee)
+    db.session.commit()
+
+    return True, f"Сотрудник {employee_name} успешно удален"
+
+  except Exception as e:
+    db.session.rollback()
+    return False, f"Ошибка при удалении сотрудника: {str(e)}"
+
+
+def delete_subordinate_with_reassignment(employee_id, new_boss_id):
+  """Удаление сотрудника с переназначением подчиненных"""
+  try:
+    employee = Employee.query.get(employee_id)
+    if not employee:
+      return False, "Сотрудник не найден"
+
+    new_boss = Employee.query.get(new_boss_id)
+    if not new_boss:
+      return False, "Новый руководитель не найден"
+
+    employee_name = employee.full_name
+    new_boss_name = new_boss.full_name
+
+    # Переназначаем подчиненных новому руководителю
+    for hierarchy in employee.subordinate_relations:
+      hierarchy.boss_id = new_boss_id
+
+    # Удаляем связи, где сотрудник является подчиненным
+    EmployeeHierarchy.query.filter_by(subordinate_id=employee_id).delete()
+
+    # Удаляем сотрудника
+    db.session.delete(employee)
+    db.session.commit()
+
+    return True, f"Сотрудник {employee_name} удален. Подчиненные переназначены {new_boss_name}"
+
+  except Exception as e:
+    db.session.rollback()
+    return False, f"Ошибка при удалении: {str(e)}"
+
+def is_validate_positions(employee_position, boss_id=None) -> bool:
+  print('START is_validate_positions')
+  print('type of employee_position =', type(employee_position), 'value =', employee_position)
+  print('type of boss_id =', type(boss_id), 'value =', boss_id)
+  # Проверка, что грейд руководителя на один выше чем у подчиненного
+  new_employee_position = int(employee_position)
+  if boss_id:
+    boss_position = get_position_by_employee_id(boss_id)
+    print('END is_validate_positions')
+    return boss_position == new_employee_position + 1
+  else:
+    print('END is_validate_positions')
+    return new_employee_position == 5
+
+def get_position_by_employee_id(employee_id) -> int:
+  print('START get_position_by_employee_id')
+  emp = db.session.query(Employee).filter(Employee.id == employee_id).first()
+  print('END get_position_by_employee_id')
+  return int(emp.position)
