@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Изменение данных о сотруднике</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <!-- Flash сообщения -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="flash-messages mt-4">
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+                            <div class="d-flex align-items-center">
+                                <i class="bi
+                                    {% if category == 'success' %}bi-check-circle-fill
+                                    {% elif category == 'error' %}bi-exclamation-circle-fill
+                                    {% elif category == 'warning' %}bi-exclamation-triangle-fill
+                                    {% else %}bi-info-circle-fill
+                                    {% endif %} me-2 fs-5"></i>
+                                <div>
+                                    <strong class="me-2">
+                                        {% if category == 'success' %}Успех!
+                                        {% elif category == 'error' %}Ошибка!
+                                        {% elif category == 'warning' %}Внимание!
+                                        {% else %}Информация
+                                        {% endif %}
+                                    </strong>
+                                    {{ message }}
+                                </div>
+                            </div>
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+
+    <div class="container mt-4">
+        <h1>Изменение данных о сотруднике</h1>
+        
+        <form method="POST" action="{{ url_for('edit_employee', employee_id=employee.id) }}">
+            <!-- Скрытое поле для ID сотрудника -->
+            <input type="hidden" name="employee_id" value="{{ employee.id }}">
+            
+            <div class="mb-3">
+                <label for="full_name" class="form-label">Имя сотрудника *</label>
+                <input type="text" class="form-control" id="full_name" name="full_name" 
+                       value="{{ employee.full_name }}" autocomplete="off" required>
+            </div>
+            
+            <div class="mb-3">
+                <label for="position_id" class="form-label">Должность *</label>
+                <select class="form-select" id="position_id" name="position_id" required>
+                    {% for position in positions %}
+                    <option value="{{ position.position_id }}" 
+                            {% if employee.position == position.position_id %}selected{% endif %}>
+                        {{ position.position_name }} ({{ position.position_id }})
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="mb-3">
+                <label for="boss_id" class="form-label">Руководитель</label>
+                <!-- Скрытое поле для реального значения boss_id -->
+                <input type="hidden" id="actual_boss_id" name="boss_id" value="{{ employee.boss.id if employee.boss else '' }}">
+                <div class="input-group">
+                    <input type="text" class="form-control" id="bossSearch" autocomplete="off"
+                           placeholder="Поиск руководителя..."
+                           value="{{ employee.boss.full_name if employee.boss else '' }}"
+                           oninput="filterBosses()">
+                    <!-- Кнопка очистки -->
+                    <button type="button" class="btn btn-outline-secondary" onclick="clearBossSelection()">
+                        <i class="bi bi-x"></i>
+                    </button>
+                </div>
+
+                <!-- Скрытый select только для хранения данных (без name attribute) -->
+                <select class="form-select" id="boss_data" style="display:none;">
+                    <option value="">Нет руководителя</option>
+                    {% for emp in employees %}
+                    {% if emp.id != employee.id %}
+                    <option value="{{ emp.id }}"
+                            data-position-id="{{ emp.position }}"
+                            data-full-name="{{ emp.full_name }} - {{ emp.position_name.position_name }} ({{emp.position_name.position_id}})"
+                            {% if employee.boss and employee.boss.id == emp.id %}selected{% endif %}>
+                        {{ emp.full_name }} - {{ emp.position_name.position_name }} ({{emp.position_name.position_id}})
+                    </option>
+                    {% endif %}
+                    {% endfor %}
+                </select>
+
+                <div id="bossDropdown" class="dropdown-menu" style="width:100%; max-height:200px; overflow-y:auto;"></div>
+
+                <!-- Информация о текущем выборе -->
+                <div class="form-text">
+                    {% if employee.boss %}
+                    Текущий руководитель: <strong>{{ employee.boss.full_name }}</strong>
+                    {% else %}
+                    Руководитель не назначен
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label for="salary" class="form-label">Оклад *</label>
+                <input type="number" step="0.01" min="0" placeholder="0.00"
+                       class="form-control" id="salary" name="salary" 
+                       value="{{ '%.2f'|format(employee.salary) }}" required>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="hire_date" class="form-label">Дата принятия на работу *</label>
+                        <input type="date" class="form-control" id="hire_date" name="hire_date"
+                               value="{{ employee.hire_date.strftime('%Y-%m-%d') if employee.hire_date else '' }}"
+                               max="{{ today }}" required>
+                        <div class="form-text">Выберите дату приема на работу</div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label class="form-label">Информация о сотруднике</label>
+                        <div class="p-3 border rounded bg-light">
+                            <small class="text-muted">
+                                <strong>ID:</strong> {{ employee.id }}<br>
+                                <strong>Принят на работу:</strong> {{ employee.hire_date.strftime('%d.%m.%Y') if employee.hire_date else 'Не указана' }}<br>
+                                {% if employee.boss %}
+                                <strong>Текущий руководитель:</strong> {{ employee.boss.full_name }}
+                                {% endif %}
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Информация о подчиненных -->
+            {% if has_subordinates %}
+            <div class="mb-3">
+                <div class="alert alert-info">
+                    <h6><i class="bi bi-people-fill me-2"></i>Подчиненные этого сотрудника</h6>
+                    <ul class="mb-0">
+                        {% for sub in subordinates %}
+                        <li>
+                            {{ sub.full_name }} - {{ sub.position_name.position_name }}
+                            <a href="{{ url_for('edit_employee', employee_id=sub.id) }}" 
+                               class="btn btn-sm btn-outline-primary ms-2">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-check-circle me-2"></i>Сохранить изменения
+                </button>
+                <a href="{{ url_for('employees') }}" class="btn btn-secondary">Отмена</a>
+                
+                <!-- Кнопка удаления -->
+                <button type="button" class="btn btn-outline-danger ms-auto" 
+                        data-bs-toggle="modal" data-bs-target="#deleteModal">
+                    <i class="bi bi-trash me-2"></i>Удалить
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Модальное окно удаления -->
+    <div class="modal fade" id="deleteModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Подтверждение удаления</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Вы уверены, что хотите удалить сотрудника <strong>"{{ employee.full_name }}"</strong>?</p>
+                    
+                    {% if has_subordinates %}
+                    <div class="alert alert-warning">
+                        <h6><i class="bi bi-exclamation-triangle me-2"></i>Внимание!</h6>
+                        <p class="mb-1">У этого сотрудника есть {{ subordinates|length }} подчиненных:</p>
+                        <ul class="small mb-2">
+                            {% for sub in subordinates %}
+                            <li>{{ sub.full_name }}</li>
+                            {% endfor %}
+                        </ul>
+                        
+                        <div class="mb-3">
+                            <label for="new_boss_id" class="form-label">Переназначить подчиненных:</label>
+                            <select class="form-control" id="new_boss_id" name="new_boss_id"
+                                    style="border-radius: 5px;">
+                                <option value="">Не переназначать (удалить все связи)</option>
+                                {% for emp in employees %}
+                                    {% if emp.id != employee.id %}
+                                    <option value="{{ emp.id }}">
+                                        {{ emp.full_name }} - {{ emp.position_name.position_name }}
+                                    </option>
+                                    {% endif %}
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-success">
+                        <i class="bi bi-check-circle me-2"></i>У сотрудника нет подчиненных
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <form method="POST" action="{{ url_for('delete_employee', employee_id=employee.id) }}"
+                          id="deleteForm">
+                        <input type="hidden" name="new_boss_id" id="delete_new_boss_id" value="">
+                        <button type="submit" class="btn btn-danger">
+                            <i class="bi bi-trash me-2"></i>Удалить
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <script>
+        let allBosses = [];
+        let selectedBoss = null;
+
+        // Инициализация данных
+        document.addEventListener('DOMContentLoaded', function() {
+            // Заполняем allBosses из скрытого select
+            const bossOptions = document.querySelectorAll('#boss_data option');
+            allBosses = Array.from(bossOptions).map(option => ({
+                id: option.value,
+                text: option.textContent,
+                positionId: option.getAttribute('data-position-id'),
+                fullName: option.getAttribute('data-full-name'),
+                element: option
+            })).filter(boss => boss.id !== '');
+
+            // Устанавливаем начальное значение
+            const currentBossId = "{{ employee.boss.id if employee.boss else '' }}";
+            if (currentBossId) {
+                selectedBoss = allBosses.find(boss => boss.id === currentBossId);
+                document.getElementById('actual_boss_id').value = currentBossId;
+            }
+
+            // Устанавливаем максимальную дату как сегодня
+            document.getElementById('hire_date').max = new Date().toISOString().split('T')[0];
+
+            // Обработка выбора нового руководителя для подчиненных
+            const newBossSelect = document.getElementById('new_boss_id');
+            const deleteNewBossInput = document.getElementById('delete_new_boss_id');
+
+            if (newBossSelect && deleteNewBossInput) {
+                newBossSelect.addEventListener('change', function() {
+                    deleteNewBossInput.value = this.value;
+                });
+            }
+
+            // Обработка очистки поля поиска
+            document.getElementById('bossSearch').addEventListener('input', function() {
+                if (this.value === '') {
+                    clearBossSelection();
+                }
+            });
+        });
+
+        function filterBosses() {
+            const searchText = document.getElementById('bossSearch').value.toLowerCase();
+            const dropdown = document.getElementById('bossDropdown');
+            dropdown.innerHTML = '';
+
+            // Если поле поиска пустое, скрываем dropdown
+            if (!searchText.trim()) {
+                dropdown.style.display = 'none';
+                return;
+            }
+
+            // Фильтруем руководителей по поисковому запросу
+            const availableBosses = allBosses.filter(boss =>
+                boss.fullName.toLowerCase().includes(searchText)
+            );
+
+            // Добавляем варианты в dropdown
+            availableBosses.forEach(boss => {
+                const item = document.createElement('button');
+                item.type = 'button';
+                item.className = 'dropdown-item';
+                item.textContent = boss.fullName;
+                item.onclick = () => selectBoss(boss);
+                dropdown.appendChild(item);
+            });
+
+            // Показываем/скрываем dropdown
+            if (searchText && availableBosses.length > 0) {
+                dropdown.style.display = 'block';
+            } else {
+                dropdown.style.display = 'none';
+            }
+        }
+
+        function selectBoss(boss) {
+            selectedBoss = boss;
+            document.getElementById('bossSearch').value = boss.fullName;
+            document.getElementById('actual_boss_id').value = boss.id;
+            document.getElementById('bossDropdown').style.display = 'none';
+
+            console.log('Выбран руководитель:', boss.fullName, 'ID:', boss.id);
+        }
+
+        function clearBossSelection() {
+            selectedBoss = null;
+            document.getElementById('bossSearch').value = '';
+            document.getElementById('actual_boss_id').value = '';
+            document.getElementById('bossDropdown').style.display = 'none';
+
+            console.log('Руководитель очищен');
+        }
+
+        // Закрытие dropdown при клике вне его
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.input-group') && !e.target.closest('.dropdown-menu')) {
+                document.getElementById('bossDropdown').style.display = 'none';
+            }
+        });
+
+        // Валидация формы
+        document.querySelector('form').addEventListener('submit', function(e) {
+            // Синхронизация полей перед отправкой
+            const bossSearchValue = document.getElementById('bossSearch').value;
+            const actualBossId = document.getElementById('actual_boss_id').value;
+
+            // Если поле поиска пустое, гарантируем что boss_id тоже пустое
+            if (!bossSearchValue.trim() && actualBossId) {
+                document.getElementById('actual_boss_id').value = '';
+            }
+
+            // Если в поле поиска есть текст, но ID не установлен - очищаем поле
+            if (bossSearchValue && !actualBossId) {
+                document.getElementById('bossSearch').value = '';
+            }
+
+            // Валидация зарплаты
+            const salary = document.getElementById('salary').value;
+            if (salary && parseFloat(salary) < 0) {
+                e.preventDefault();
+                alert('Зарплата не может быть отрицательной');
+                return false;
+            }
+
+            // Валидация даты
+            const hireDate = new Date(document.getElementById('hire_date').value);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            const hireDateOnly = new Date(hireDate.getFullYear(), hireDate.getMonth(), hireDate.getDate());
+            const todayOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+
+            if (hireDateOnly > todayOnly) {
+                e.preventDefault();
+                alert('Дата приема не может быть в будущем');
+                return false;
+            }
+
+            return true;
+        });
+    </script>
+
+    <style>
+        .flash-messages {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
+            width: 90%;
+            max-width: 600px;
+        }
+        .alert {
+            border-radius: 8px;
+            border: none;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .dropdown-menu {
+            border-radius: 8px;
+            border: 1px solid #dee2e6;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .dropdown-item:hover {
+            background-color: #f8f9fa;
+        }
+    </style>
+</body>
+</html>

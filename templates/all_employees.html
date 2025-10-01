@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Список сотрудников</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+</head>
+<body>
+    <header>
+        <!-- Меню сортировки данных -->
+        <nav>
+            <ul>
+                <li><nav_panel_name>Сортировка:</nav_panel_name></li>
+                <li><a href="{{ url_for('employees', page=page, sort_by='full_name', sort_order='asc' if sort_by != 'full_name' or sort_order == 'desc' else 'desc') }}">
+                            По имени {% if sort_by == 'full_name' %}{{ '▼' if sort_order == 'desc' else '▲' }}{% endif %}</a></li>
+                <li><a href="{{ url_for('employees', page=page, sort_by='position', sort_order='asc' if sort_by != 'position' or sort_order == 'desc' else 'desc') }}">
+                            По должности {% if sort_by == 'position' %}{{ '▼' if sort_order == 'desc' else '▲' }}{% endif %}</a></li>
+                <li><a href="{{ url_for('employees', page=page, sort_by='hire_date', sort_order='asc' if sort_by != 'hire_date' or sort_order == 'desc' else 'desc') }}">
+                            По дате найма {% if sort_by == 'hire_date' %}{{ '▼' if sort_order == 'desc' else '▲' }}{% endif %}</a></li>
+                <li><a href="{{ url_for('employees', page=page, sort_by='salary', sort_order='asc' if sort_by != 'salary' or sort_order == 'desc' else 'desc') }}">
+                            По окладу {% if sort_by == 'salary' %}{{ '▼' if sort_order == 'desc' else '▲' }}{% endif %}</a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        <div class="container mt-4">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div class="d-flex align-items-center">
+                    <div>
+                        <h1 class="h3 fw-bold text-dark mb-0">Всего сотрудников: {{ employees.total }}</h1>
+                    </div>
+                </div>
+                <a href="{{ url_for('add_employee') }}"
+                   class="btn btn-success fw-bold px-4 py-2 btn-hover">
+                    <i class="bi bi-person-plus-fill me-2"></i>Добавить сотрудника
+                </a>
+            </div>
+
+            <!-- Форма поиска и фильтрации -->
+            <form method="GET" action="{{ url_for('employees') }}" class="mb-4">
+                <div class="row">
+                    <div class="col-md-8">
+                        <div class="input-group">
+                            <input type="text" name="search" class="form-control"
+                                   placeholder="🔍 Поиск по имени или должности..."
+                                   value="{{ request.args.get('q', '') }}">
+                            <button class="btn btn-outline-primary" type="submit">Поиск</button>
+                        </div>
+                    </div>
+                </div>
+            </form>
+
+            {% for employee in employees.items %}
+                <div class="card mb-3 shadow-sm">
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-8">
+                                <ul class="list-unstyled">
+                                    <li><strong>👤 Имя:</strong> {{ employee.full_name }}</li>
+                                    <li><strong>💼 Должность:</strong> {{ employee.position_name.position_name }} (Грейд: {{ employee.position }})</li>
+                                    <li><strong>📅 Принят на работу:</strong> {{ employee.hire_date.strftime('%d.%m.%Y') if employee.hire_date else 'Не указана' }}</li>
+                                    <li><strong>💰 Оклад:</strong> {{ "%.2f"|format(employee.salary) }} ₽</li>
+                                    <li><strong>👑 Непосредственный руководитель:</strong> {{ employee.boss.full_name if employee.boss else 'Нет' }}</li>
+                                </ul>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="d-flex flex-column gap-2">
+                                    <!-- Кнопка редактирования -->
+                                    <a href="{{ url_for('edit_employee', employee_id=employee.id) }}"
+                                       class="btn btn-outline-primary btn-sm">
+                                        <i class="bi bi-pencil me-1"></i> Редактировать
+                                    </a>
+
+                                    <!-- Кнопка удаления с модальным окном -->
+                                    <button type="button" class="btn btn-outline-danger btn-sm"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#deleteModal{{ employee.id }}">
+                                        <i class="bi bi-trash me-1"></i> Удалить
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% else %}
+                <div class="text-center py-5">
+                    <i class="bi bi-people display-1 text-muted"></i>
+                    <h3 class="text-muted mt-3">Сотрудники не найдены</h3>
+                    <p class="text-muted">Попробуйте изменить параметры поиска</p>
+                    <a href="{{ url_for('add_employee') }}" class="btn btn-success">
+                        <i class="bi bi-person-plus me-2"></i>Добавить первого сотрудника
+                    </a>
+                </div>
+            {% endfor %}
+
+            <!-- Пагинация -->
+            {% if employees.pages > 1 %}
+            <nav aria-label="Page navigation" class="mt-4">
+                <ul class="pagination justify-content-center">
+                    <!-- Кнопка "Назад" -->
+                    <li class="page-item {% if not employees.has_prev %}disabled{% endif %}">
+                        <a class="page-link" href="{{ url_for('employees', page=employees.prev_num, sort_by=sort_by,
+                        sort_order=sort_order, search=search, hire_date_from=hire_date_from, hire_date_to=hire_date_to) }}">
+                            &laquo;
+                        </a>
+                    </li>
+
+                    <!-- Номера страниц -->
+                    {% for page_num in employees.iter_pages(left_edge=2, left_current=2, right_current=3, right_edge=2) %}
+                        {% if page_num %}
+                            <li class="page-item {% if page_num == employees.page %}active{% endif %}">
+                                <a class="page-link" href="{{ url_for('employees', page=page_num, sort_by=sort_by,
+                                sort_order=sort_order, search=search, hire_date_from=hire_date_from, hire_date_to=hire_date_to) }}">
+                                    {{ page_num }}
+                                </a>
+                            </li>
+                        {% else %}
+                            <li class="page-item disabled">
+                                <span class="page-link">...</span>
+                            </li>
+                        {% endif %}
+                    {% endfor %}
+
+                    <!-- Кнопка "Вперед" -->
+                    <li class="page-item {% if not employees.has_next %}disabled{% endif %}">
+                        <a class="page-link" href="{{ url_for('employees', page=employees.next_num, sort_by=sort_by,
+                        sort_order=sort_order, search=search, hire_date_from=hire_date_from, hire_date_to=hire_date_to) }}">
+                            &raquo;
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+            {% endif %}
+        </div>
+    </main>
+
+    <!-- МОДАЛЬНЫЕ ОКНА - РАЗМЕЩАЕМ ЗДЕСЬ, В КОНЦЕ BODY -->
+    {% for employee in employees.items %}
+    <!-- Модальное окно подтверждения удаления -->
+    <div class="modal fade" id="deleteModal{{ employee.id }}" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Подтверждение удаления</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Вы уверены, что хотите удалить сотрудника <strong>"{{ employee.full_name }}"</strong>?</p>
+
+                    {% set has_subordinates = employee.subordinate_relations %}
+                    {% if has_subordinates %}
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        <strong>Внимание!</strong> У этого сотрудника есть подчиненные.
+                        При удалении все связи с подчиненными будут разорваны.
+                    </div>
+                    {% else %}
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle me-2"></i>
+                        У сотрудника нет подчиненных.
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <form method="POST" action="{{ url_for('delete_employee', employee_id=employee.id) }}">
+                        <button type="submit" class="btn btn-danger">
+                            <i class="bi bi-trash me-2"></i> Удалить
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+
+    <!-- Подключение Bootstrap JavaScript -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+
+    <style>
+        body {
+            min-width: 850px;
+            background-color: #f8f9fa;
+        }
+
+        /* Стили для навигации */
+        nav {
+            background-color: #333;
+            padding: 15px 0;
+            margin-bottom: 20px;
+        }
+
+        nav ul {
+            list-style-type: none;
+            margin: 0;
+            padding: 0;
+            text-align: center;
+        }
+
+        nav ul li {
+            display: inline;
+            margin: 0 20px;
+        }
+
+        nav ul li a {
+            color: white;
+            text-decoration: none;
+            font-family: Arial, sans-serif;
+            font-size: 18px;
+            padding: 10px 15px;
+        }
+
+        nav ul li nav_panel_name {
+            color: yellow;
+            font-size: 18px;
+            padding: 10px 15px;
+        }
+
+        nav ul li a:hover {
+            background-color: #555;
+            border-radius: 5px;
+        }
+
+        .active {
+            background-color: #4CAF50;
+            border-radius: 5px;
+        }
+
+        /* Стили для карточек */
+        .card {
+            border: none;
+            border-radius: 10px;
+            transition: transform 0.2s;
+        }
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1) !important;
+        }
+        .btn-hover {
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 8px rgba(40, 167, 69, 0.2);
+        }
+        .btn-hover:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
+        }
+        .list-unstyled li {
+            margin-bottom: 8px;
+            padding: 4px 0;
+        }
+    </style>
+</body>
+</html>
